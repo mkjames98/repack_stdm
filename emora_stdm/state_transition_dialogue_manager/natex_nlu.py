@@ -119,7 +119,7 @@ class NatexNLU:
         macro_arg: macro_arg_string | macro_literal | macro
         macro_literal: /[^#), `][^#),`]*/
         macro_arg_string: "`" /[^`]+/ "`"
-        literal: /[a-z_A-Z@.0-9:]+( +[a-z_A-Z@.0-9:]+)*/ | "\"" /[^\"]+/ "\"" | "`" /[^`]+/ "`"
+        literal: /[a-z_A-Z@.0-9:]+[^a-zA-Z\d]*/ | "\"" /[^\"]+/ "\"" | "`" /[^`]+/ "`"
         symbol: /[a-z_A-Z.0-9]+/
         regex_value: /[^\/]+/
         """
@@ -311,50 +311,74 @@ class NatexNLU:
             tree.data = 'compiled'
             tree.children[0] = r'\b\W*\b'.join(self.to_strings(args)) + ' _END_'
 
+        class _DisplayTransformer(Transformer):
+            def flexible_sequence(self, args):
+                return "[" + ", ".join([str(arg) for arg in args]) + "]"
 
-        def _current_compilation(self, tree):
-            class DisplayTransformer(Transformer):
-                def flexible_sequence(self, args):
-                    return '[' + ', '.join([str(arg) for arg in args]) + ']'
-                def rigid_sequence(self, args):
-                    return '[!' + ', '.join([str(arg) for arg in args]) + ']'
-                def conjunction(self, args):
-                    return '<' + ', '.join([str(arg) for arg in args]) + '>'
-                def disjunction(self, args):
-                    return '{' + ', '.join([str(arg) for arg in args]) + '}'
-                def optional(self, args):
-                    return args[0] + '?'
-                def kleene_star(self, args):
-                    return args[0] + '*'
-                def kleene_plus(self, args):
-                    return args[0] + '+'
-                def negation(self, args):
-                    (arg,) = args
-                    return '-' + str(arg)
-                def regex(self, args):
-                    (arg,) = args
-                    return str(arg)
-                def reference(self, args):
-                    return '$' + args[0]
-                def assignment(self, args):
-                    return '${}={}'.format(*args)
-                def macro(self, args):
-                    return '#' + args[0] + '(' + ', '.join([str(arg) for arg in args[1:]]) + ')'
-                def literal(self, args):
-                    return str(args[0])
-                def macro_arg(self, args):
-                    return str(args[0])
-                def macro_literal(self, args):
-                    return str(args[0])
-                def symbol(self, args):
-                    return str(args[0])
-                def term(self, args):
-                    return str(args[0])
-                def start(self, args):
-                    return str(args[0])
-                def compiled(self, args):
-                    return str(args[0])
+            def rigid_sequence(self, args):
+                return "[!" + ", ".join([str(arg) for arg in args]) + "]"
+
+            def conjunction(self, args):
+                return "<" + ", ".join([str(arg) for arg in args]) + ">"
+
+            def disjunction(self, args):
+                return "{" + ", ".join([str(arg) for arg in args]) + "}"
+
+            def optional(self, args):
+                return args[0] + "?"
+
+            def kleene_star(self, args):
+                return args[0] + "*"
+
+            def kleene_plus(self, args):
+                return args[0] + "+"
+
+            def negation(self, args):
+                (arg,) = args
+                return "-" + str(arg)
+
+            def regex(self, args):
+                (arg,) = args
+                return str(arg)
+
+            def reference(self, args):
+                return "$" + args[0]
+
+            def assignment(self, args):
+                return "${}={}".format(*args)
+
+            def macro(self, args):
+                return (
+                    "#"
+                    + args[0]
+                    + "("
+                    + ", ".join([str(arg) for arg in args[1:]])
+                    + ")"
+                )
+
+            def literal(self, args):
+                return str(args[0])
+
+            def macro_arg(self, args):
+                return str(args[0])
+
+            def macro_literal(self, args):
+                return str(args[0])
+
+            def symbol(self, args):
+                return str(args[0])
+
+            def term(self, args):
+                return str(args[0])
+
+            def start(self, args):
+                return str(args[0])
+
+            def compiled(self, args):
+                return str(args[0])
+                
+        def _current_compilation(self, tree):    
             if not isinstance(tree, Tree):
                 return str(tree)
             else:
-                return DisplayTransformer().transform(tree)
+                return self._DisplayTransformer().transform(tree)
